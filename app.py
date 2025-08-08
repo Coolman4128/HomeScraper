@@ -92,6 +92,12 @@ def get_properties():
         max_beds = data.get('max_beds', 10)
         min_baths = data.get('min_baths', 0)
         max_baths = data.get('max_baths', 10)
+        min_stories = data.get('min_stories', 0)
+        max_stories = data.get('max_stories', 10)
+        min_garage = data.get('min_garage', 0)
+        max_garage = data.get('max_garage', 10)
+        min_distance = data.get('min_distance', 0)
+        max_distance = data.get('max_distance', 100)
         
         db = SessionLocal()
         try:
@@ -119,6 +125,18 @@ def get_properties():
                 query = query.filter(Property.baths >= min_baths)
             if max_baths < 10:
                 query = query.filter(Property.baths <= max_baths)
+            if min_stories > 0:
+                query = query.filter(Property.stories >= min_stories)
+            if max_stories < 10:
+                query = query.filter(Property.stories <= max_stories)
+            if min_garage > 0:
+                query = query.filter(Property.parking_garage >= min_garage)
+            if max_garage < 10:
+                query = query.filter(Property.parking_garage <= max_garage)
+            if min_distance > 0:
+                query = query.filter(Property.estdist >= min_distance)
+            if max_distance < 100:
+                query = query.filter(Property.estdist <= max_distance)
             
             # Execute query and convert to list of dictionaries
             properties = query.all()

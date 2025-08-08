@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import './index.css';
 
@@ -18,6 +18,12 @@ function App() {
     max_beds: '',
     min_baths: '',
     max_baths: '',
+    min_stories: '',
+    max_stories: '',
+    min_garage: '',
+    max_garage: '',
+    min_distance: '',
+    max_distance: '',
     listing_age: ''
   });
 
@@ -27,6 +33,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [scraperLoading, setScraperLoading] = useState(false);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -42,10 +49,85 @@ function App() {
     loadSettings();
   }, []);
 
-  // Apply filters whenever filters change
+  // Debounced filter application
+  const debouncedApplyFilters = useCallback(
+    useMemo(() => {
+      const timeouts = new Map();
+      
+      return (filtersToApply = filters) => {
+        // Clear any existing timeout
+        if (timeouts.has('filter')) {
+          clearTimeout(timeouts.get('filter'));
+        }
+        
+        // Set new timeout
+        const timeoutId = setTimeout(() => {
+          let filtered = [...allProperties];
+
+          // Apply each filter if it has a value
+          if (filtersToApply.min_price !== '') {
+            filtered = filtered.filter(prop => prop.list_price >= parseFloat(filtersToApply.min_price));
+          }
+          if (filtersToApply.max_price !== '') {
+            filtered = filtered.filter(prop => prop.list_price <= parseFloat(filtersToApply.max_price));
+          }
+          if (filtersToApply.min_sqft !== '') {
+            filtered = filtered.filter(prop => prop.sqft >= parseFloat(filtersToApply.min_sqft));
+          }
+          if (filtersToApply.max_sqft !== '') {
+            filtered = filtered.filter(prop => prop.sqft <= parseFloat(filtersToApply.max_sqft));
+          }
+          if (filtersToApply.min_lot_acre !== '') {
+            filtered = filtered.filter(prop => prop.lot_acre >= parseFloat(filtersToApply.min_lot_acre));
+          }
+          if (filtersToApply.max_lot_acre !== '') {
+            filtered = filtered.filter(prop => prop.lot_acre <= parseFloat(filtersToApply.max_lot_acre));
+          }
+          if (filtersToApply.min_beds !== '') {
+            filtered = filtered.filter(prop => prop.beds >= parseFloat(filtersToApply.min_beds));
+          }
+          if (filtersToApply.max_beds !== '') {
+            filtered = filtered.filter(prop => prop.beds <= parseFloat(filtersToApply.max_beds));
+          }
+          if (filtersToApply.min_baths !== '') {
+            filtered = filtered.filter(prop => prop.baths >= parseFloat(filtersToApply.min_baths));
+          }
+          if (filtersToApply.max_baths !== '') {
+            filtered = filtered.filter(prop => prop.baths <= parseFloat(filtersToApply.max_baths));
+          }
+          if (filtersToApply.min_stories !== '') {
+            filtered = filtered.filter(prop => prop.stories >= parseFloat(filtersToApply.min_stories));
+          }
+          if (filtersToApply.max_stories !== '') {
+            filtered = filtered.filter(prop => prop.stories <= parseFloat(filtersToApply.max_stories));
+          }
+          if (filtersToApply.min_garage !== '') {
+            filtered = filtered.filter(prop => prop.parking_garage >= parseFloat(filtersToApply.min_garage));
+          }
+          if (filtersToApply.max_garage !== '') {
+            filtered = filtered.filter(prop => prop.parking_garage <= parseFloat(filtersToApply.max_garage));
+          }
+          if (filtersToApply.min_distance !== '') {
+            filtered = filtered.filter(prop => prop.estdist >= parseFloat(filtersToApply.min_distance));
+          }
+          if (filtersToApply.max_distance !== '') {
+            filtered = filtered.filter(prop => prop.estdist <= parseFloat(filtersToApply.max_distance));
+          }
+
+          setFilteredProperties(filtered);
+          timeouts.delete('filter');
+        }, 300); // 300ms debounce delay
+        
+        timeouts.set('filter', timeoutId);
+      };
+    }, [allProperties]),
+    [allProperties]
+  );
+
+  // Apply filters whenever filters or properties change
   useEffect(() => {
-    applyFilters();
-  }, [filters, allProperties]);
+    debouncedApplyFilters();
+  }, [filters, allProperties, debouncedApplyFilters]);
 
   const loadAllProperties = async () => {
     setLoading(true);
@@ -85,6 +167,21 @@ function App() {
     }
   };
 
+  const manualScrape = async () => {
+    setScraperLoading(true);
+    setError(null);
+    
+    try {
+      await axios.post(`${API_BASE_URL}/manual-scrape`);
+      // Reload properties after successful scrape
+      await loadAllProperties();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to start manual scrape. Please try again.');
+    } finally {
+      setScraperLoading(false);
+    }
+  };
+
   const toggleFavorite = async (propertyId) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/properties/favorite/${propertyId}`);
@@ -106,54 +203,20 @@ function App() {
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...allProperties];
-
-    // Apply each filter if it has a value
-    if (filters.min_price !== '') {
-      filtered = filtered.filter(prop => prop.list_price >= parseFloat(filters.min_price));
-    }
-    if (filters.max_price !== '') {
-      filtered = filtered.filter(prop => prop.list_price <= parseFloat(filters.max_price));
-    }
-    if (filters.min_sqft !== '') {
-      filtered = filtered.filter(prop => prop.sqft >= parseFloat(filters.min_sqft));
-    }
-    if (filters.max_sqft !== '') {
-      filtered = filtered.filter(prop => prop.sqft <= parseFloat(filters.max_sqft));
-    }
-    if (filters.min_lot_acre !== '') {
-      filtered = filtered.filter(prop => prop.lot_acre >= parseFloat(filters.min_lot_acre));
-    }
-    if (filters.max_lot_acre !== '') {
-      filtered = filtered.filter(prop => prop.lot_acre <= parseFloat(filters.max_lot_acre));
-    }
-    if (filters.min_beds !== '') {
-      filtered = filtered.filter(prop => prop.beds >= parseFloat(filters.min_beds));
-    }
-    if (filters.max_beds !== '') {
-      filtered = filtered.filter(prop => prop.beds <= parseFloat(filters.max_beds));
-    }
-    if (filters.min_baths !== '') {
-      filtered = filtered.filter(prop => prop.baths >= parseFloat(filters.min_baths));
-    }
-    if (filters.max_baths !== '') {
-      filtered = filtered.filter(prop => prop.baths <= parseFloat(filters.max_baths));
-    }
-
-    setFilteredProperties(filtered);
-  };
-
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({
-      ...prev,
+    const newFilters = {
+      ...filters,
       [name]: value
-    }));
+    };
+    setFilters(newFilters);
+    
+    // Apply filters immediately with the new values
+    debouncedApplyFilters(newFilters);
   };
 
   const clearFilters = () => {
-    setFilters({
+    const clearedFilters = {
       min_price: '',
       max_price: '',
       min_sqft: '',
@@ -165,8 +228,17 @@ function App() {
       max_beds: '',
       min_baths: '',
       max_baths: '',
+      min_stories: '',
+      max_stories: '',
+      min_garage: '',
+      max_garage: '',
+      min_distance: '',
+      max_distance: '',
       listing_age: ''
-    });
+    };
+    setFilters(clearedFilters);
+    // Apply cleared filters immediately
+    debouncedApplyFilters(clearedFilters);
   };
 
   const formatPrice = (price) => {
@@ -300,6 +372,18 @@ function App() {
               <span className="detail-label">Type:</span>
               <span className="detail-value">{property.property_type || 'N/A'}</span>
             </div>
+            <div className="detail-item">
+              <span className="detail-label">Stories:</span>
+              <span className="detail-value">{property.stories || 'N/A'}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Garage:</span>
+              <span className="detail-value">{property.parking_garage || 'N/A'}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Distance:</span>
+              <span className="detail-value">{property.estdist ? `${property.estdist} mi` : 'N/A'}</span>
+            </div>
           </div>
           
           {property.description && property.description !== 'N/A' && isExpanded && (
@@ -372,9 +456,28 @@ function App() {
 
   const HomePage = () => (
     <div className="main-content">
-      <div className="header">
-        <h1>Property Search</h1>
-        <p>Properties near 2821 Old Rte 15, New Columbia, PA</p>
+      <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>Property Search</h1>
+          <p>Properties near 2821 Old Rte 15, New Columbia, PA</p>
+        </div>
+        <button 
+          className="manual-scrape-button" 
+          onClick={manualScrape}
+          disabled={scraperLoading}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: scraperLoading ? '#6c757d' : '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: scraperLoading ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          {scraperLoading ? 'Scraping...' : '🔄 Manual Scrape'}
+        </button>
       </div>
 
       <div className="filters-section">
@@ -524,7 +627,7 @@ function App() {
             </div>
 
             {/* Lot Size Filters */}
-            <div className="filter-row" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+            <div className="filter-row" style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
               <div className="filter-group" style={{ flex: 1 }}>
                 <label htmlFor="min_lot_acre">Min Lot Acres</label>
                 <input
@@ -547,6 +650,96 @@ function App() {
                   onChange={handleFilterChange}
                   step="0.1"
                   placeholder="e.g. 5.0"
+                />
+              </div>
+            </div>
+
+            {/* Stories Filters */}
+            <div className="filter-row" style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="min_stories">Min Stories</label>
+                <input
+                  type="number"
+                  id="min_stories"
+                  name="min_stories"
+                  value={filters.min_stories}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 1"
+                  min="0"
+                  max="10"
+                />
+              </div>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="max_stories">Max Stories</label>
+                <input
+                  type="number"
+                  id="max_stories"
+                  name="max_stories"
+                  value={filters.max_stories}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 3"
+                  min="0"
+                  max="10"
+                />
+              </div>
+            </div>
+
+            {/* Garage Filters */}
+            <div className="filter-row" style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="min_garage">Min Garage Spaces</label>
+                <input
+                  type="number"
+                  id="min_garage"
+                  name="min_garage"
+                  value={filters.min_garage}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 1"
+                  min="0"
+                  max="10"
+                />
+              </div>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="max_garage">Max Garage Spaces</label>
+                <input
+                  type="number"
+                  id="max_garage"
+                  name="max_garage"
+                  value={filters.max_garage}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 4"
+                  min="0"
+                  max="10"
+                />
+              </div>
+            </div>
+
+            {/* Distance Filters */}
+            <div className="filter-row" style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="min_distance">Min Distance (miles)</label>
+                <input
+                  type="number"
+                  id="min_distance"
+                  name="min_distance"
+                  value={filters.min_distance}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 0"
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="filter-group" style={{ flex: 1 }}>
+                <label htmlFor="max_distance">Max Distance (miles)</label>
+                <input
+                  type="number"
+                  id="max_distance"
+                  name="max_distance"
+                  value={filters.max_distance}
+                  onChange={handleFilterChange}
+                  placeholder="e.g. 20"
+                  min="0"
+                  max="100"
                 />
               </div>
             </div>
