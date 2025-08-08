@@ -1,0 +1,6 @@
+flask
+flask-cors
+homeharvest
+pandas
+sqlalchemy
+apscheduler
