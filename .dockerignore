@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Node modules (will be installed during build)
+node_modules
+frontend/node_modules
+
+# Build artifacts that will be rebuilt
+frontend/build
+# static - keep this as it contains the built frontend
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache
+
+# Virtual environments
+venv
+env
+.env
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Development scripts (optional, remove if needed in container)
+build-frontend.sh
+build.sh
+run-integrated.sh
+run.sh
+setup.sh
+
+# Docker files (no need to copy into image)
+Dockerfile
+docker-compose.yml
+.dockerignore

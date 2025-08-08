@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  hometest-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hometest-property-scraper
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistent volume for database and application data
+      - hometest-data:/app/data
+      # Mount the current directory to preserve database and data files
+      - ./properties.db:/app/properties.db
+      - ./property_data_2025-08-08_121905.json:/app/property_data_2025-08-08_121905.json:ro
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  hometest-data:
+    driver: local
