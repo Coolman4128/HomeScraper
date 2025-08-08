@@ -1,11 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from models import Property, Settings, SessionLocal, create_tables
 from scraper import scraper
 import atexit
 import logging
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)  # Enable CORS for React frontend
 
 # Set up logging
@@ -297,6 +298,25 @@ def get_stats():
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+# Serve React App
+@app.route('/')
+def serve_react_app():
+    """Serve the React app's index.html"""
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def serve_react_app_files(path):
+    """Serve React app files or fall back to index.html for client-side routing"""
+    # Don't serve React app for API routes
+    if path.startswith('api/') or path in ['health', 'properties', 'scrape', 'manual-scrape', 'settings', 'stats']:
+        return jsonify({"error": "Not Found"}), 404
+    
+    if os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        # For client-side routing, serve index.html
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

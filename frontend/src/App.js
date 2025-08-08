@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import './index.css';
 
-const API_BASE_URL = 'http://localhost:5000';
+// Use relative URLs in production, localhost in development
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
